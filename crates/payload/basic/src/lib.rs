@@ -27,7 +27,7 @@ use reth_primitives::{
     eip4844::calculate_excess_blob_gas,
     proofs,
     revm::{compat::into_reth_log, env::tx_env_with_recovered},
-    Block, BlockNumberOrTag, Bytes, ChainSpec, Header, IntoRecoveredTransaction, Receipt, Receipts,
+    Block, BlockNumberOrTag, Bytes, ChainSpec, Header, IntoRecoveredTransaction, Receipt, State as ChangedState, Receipts,
     SealedBlock, Withdrawal, B256, EMPTY_OMMER_ROOT_HASH, U256,
 };
 use reth_provider::{
@@ -907,7 +907,7 @@ where
         };
 
         // commit changes
-        db.commit(state);
+        db.commit(state.clone()); // TODO(louis); cahnge inefiicent
 
         // add to the total blob gas used if the transaction successfully executed
         if let Some(blob_tx) = tx.transaction.as_eip4844() {
@@ -931,6 +931,9 @@ where
             success: result.is_success(),
             cumulative_gas_used,
             logs: result.logs().into_iter().map(into_reth_log).collect(),
+            state: ChangedState {
+                state,
+            },
             #[cfg(feature = "optimism")]
             deposit_nonce: None,
             #[cfg(feature = "optimism")]

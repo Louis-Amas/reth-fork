@@ -7,13 +7,21 @@ use crate::{
 use alloy_rlp::{length_of_length, Decodable, Encodable};
 use bytes::{Buf, BufMut, BytesMut};
 use reth_codecs::{add_arbitrary_tests, main_codec, Compact, CompactZstd};
+use serde::{Serialize, Deserialize};
 use std::{
     cmp::Ordering,
-    ops::{Deref, DerefMut},
+    ops::{Deref, DerefMut}
 };
+
+use crate::revm_primitives::State as RevmState;
 
 #[cfg(any(test, feature = "arbitrary"))]
 use proptest::strategy::Strategy;
+
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct State {
+    pub state: RevmState,
+}
 
 /// Receipt containing result of transaction execution.
 #[main_codec(no_arbitrary, zstd)]
@@ -41,7 +49,26 @@ pub struct Receipt {
     /// ensures this is only set for post-Canyon deposit transactions.
     #[cfg(feature = "optimism")]
     pub deposit_receipt_version: Option<u64>,
+
+    /// state change
+    pub state: State,
 }
+
+impl Compact for State {
+
+    fn to_compact<B>(self, buf: &mut B) -> usize
+        where
+            B: bytes::BufMut + AsMut<[u8]> {
+
+        0
+        
+    }
+
+    fn from_compact(buf: &[u8], len: usize) -> (Self, &[u8]) {
+       (State::default(), buf) 
+    }
+}
+
 
 impl Receipt {
     /// Calculates [`Log`]'s bloom filter. this is slow operation and [ReceiptWithBloom] can
@@ -231,16 +258,18 @@ impl proptest::arbitrary::Arbitrary for Receipt {
                     (None, None)
                 };
 
+                let empty_state: State = State::default();
                 Receipt { tx_type,
                     success,
                     cumulative_gas_used,
                     logs,
+                    state: empty_state, 
                     // Only receipts for deposit transactions may contain a deposit nonce
                     #[cfg(feature = "optimism")]
                     deposit_nonce,
                     // Only receipts for deposit transactions may contain a deposit nonce
                     #[cfg(feature = "optimism")]
-                    deposit_receipt_version
+                    deposit_receipt_version,
                 }
             }
         };
@@ -258,6 +287,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Receipt {
         let cumulative_gas_used = u64::arbitrary(u)?;
         let logs = Vec::<Log>::arbitrary(u)?;
 
+        let empty_state: State = State::default();
         // Only receipts for deposit transactions may contain a deposit nonce
         #[cfg(feature = "optimism")]
         let (deposit_nonce, deposit_receipt_version) = if tx_type == TxType::DEPOSIT {
@@ -274,6 +304,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Receipt {
             success,
             cumulative_gas_used,
             logs,
+            state: empty_state,
             #[cfg(feature = "optimism")]
             deposit_nonce,
             #[cfg(feature = "optimism")]
@@ -301,6 +332,7 @@ impl ReceiptWithBloom {
         let cumulative_gas_used = alloy_rlp::Decodable::decode(b)?;
         let bloom = Decodable::decode(b)?;
         let logs = alloy_rlp::Decodable::decode(b)?;
+        let empty_state: State = State::default();
 
         let receipt = match tx_type {
             #[cfg(feature = "optimism")]
@@ -325,6 +357,7 @@ impl ReceiptWithBloom {
                 success,
                 cumulative_gas_used,
                 logs,
+                state: empty_state,
                 #[cfg(feature = "optimism")]
                 deposit_nonce: None,
                 #[cfg(feature = "optimism")]

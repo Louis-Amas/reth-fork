@@ -562,6 +562,7 @@ where
         })
     }
 
+    /// LOUIS: here they notify new blocks
     /// Notifies transaction listeners about changes once a block was processed.
     fn notify_on_new_state(&self, outcome: OnNewCanonicalStateOutcome<T::Transaction>) {
         // notify about promoted pending transactions

@@ -16,6 +16,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![allow(clippy::non_canonical_clone_impl)]
 
+use std::{collections::HashMap, hash::Hash};
+
 pub use codecs_derive::*;
 
 use alloy_primitives::{Address, Bloom, Bytes, B256, B512, U256};
@@ -162,6 +164,56 @@ where
         }
 
         (list, buf)
+    }
+}
+
+impl<Key, Value> Compact for HashMap<Key, Value> 
+where
+    Key: Compact + PartialEq + Eq + Hash,
+    Value: Compact 
+{
+
+    fn to_compact<B>(self, buf: &mut B) -> usize
+        where
+            B: bytes::BufMut + AsMut<[u8]> {
+     
+        encode_varuint(self.len(), buf);
+
+        let mut tmp: Vec<u8> = Vec::with_capacity(1024);
+        for (key, value) in self {
+            tmp.clear();
+            let key_length = key.to_compact(&mut tmp);
+            encode_varuint(key_length, buf); // add key length to buffer
+            buf.put_slice(&tmp); // add key to buffer
+
+            tmp.clear();
+            let length = value.to_compact(&mut tmp);
+            encode_varuint(length, buf); // add value length to buffer
+            buf.put_slice(&tmp); // add valeu to buffer
+        }
+        0 // return 0 for now but we may need to return something else
+    }
+
+    fn from_compact(buf: &[u8], _: usize) -> (Self, &[u8]) {
+        let mut map: HashMap<Key, Value> = HashMap::new();
+
+        let (length, mut buf) = decode_varuint(buf);
+        for _ in 0..length {
+            let mut len;
+
+            // decode key
+            (len, buf) = decode_varuint(buf);
+            let (key, _) = Key::from_compact(&buf[..len], len);
+            buf.advance(len);
+
+            // decode value
+            (len, buf) = decode_varuint(buf);
+            let (value, _) = Value::from_compact(&buf[..len], len);
+            buf.advance(len);
+
+            map.insert(key, value);
+        }
+       (map, buf)
     }
 }
 

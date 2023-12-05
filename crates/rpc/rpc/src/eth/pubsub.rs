@@ -102,6 +102,7 @@ where
     Network: NetworkInfo + Clone + 'static,
 {
     match kind {
+        // LOUIS
         SubscriptionKind::NewHeads => {
             let stream = pubsub
                 .new_headers_stream()

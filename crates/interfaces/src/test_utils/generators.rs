@@ -3,7 +3,7 @@ use rand::{
     distributions::uniform::SampleRange, rngs::StdRng, seq::SliceRandom, thread_rng, SeedableRng,
 };
 use reth_primitives::{
-    proofs, sign_message, Account, Address, BlockNumber, Bytes, Header, Log, Receipt, SealedBlock,
+    proofs, sign_message, Account, Address, BlockNumber, Bytes, Header, Log, Receipt, State, SealedBlock,
     SealedHeader, Signature, StorageEntry, Transaction, TransactionKind, TransactionSigned,
     TxLegacy, B256, U256,
 };
@@ -366,6 +366,7 @@ pub fn random_receipt<R: Rng>(
         } else {
             vec![]
         },
+        state: State::default(),
         #[cfg(feature = "optimism")]
         deposit_nonce: None,
         #[cfg(feature = "optimism")]

@@ -8,6 +8,7 @@ use reth_rpc_types::{Filter, FilteredParams};
 use reth_rpc_types_compat::log::from_primitive_log;
 use std::path::Path;
 
+// LOUIS -> HERE
 // Providers are zero cost abstractions on top of an opened MDBX Transaction
 // exposing a familiar API to query the chain's information without requiring knowledge
 // of the inner tables.

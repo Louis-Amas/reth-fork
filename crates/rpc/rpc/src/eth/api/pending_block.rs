@@ -8,7 +8,7 @@ use reth_primitives::{
     revm_primitives::{
         BlockEnv, CfgEnv, EVMError, Env, InvalidTransaction, ResultAndState, SpecId,
     },
-    Block, BlockId, BlockNumberOrTag, ChainSpec, Header, IntoRecoveredTransaction, Receipt,
+    Block, BlockId, BlockNumberOrTag, ChainSpec, Header, IntoRecoveredTransaction, Receipt, State as ChangedState,
     Receipts, SealedBlockWithSenders, SealedHeader, B256, EMPTY_OMMER_ROOT_HASH, U256,
 };
 use reth_provider::{BundleStateWithReceipts, ChainSpecProvider, StateProviderFactory};
@@ -148,7 +148,7 @@ impl PendingBlockEnv {
             };
 
             // commit changes
-            db.commit(state);
+            db.commit(state.clone()); // TODO(louis): inefficient
 
             // add to the total blob gas used if the transaction successfully executed
             if let Some(blob_tx) = tx.transaction.as_eip4844() {
@@ -172,6 +172,9 @@ impl PendingBlockEnv {
                 success: result.is_success(),
                 cumulative_gas_used,
                 logs: result.logs().into_iter().map(into_reth_log).collect(),
+                state: ChangedState {
+                    state,
+                },
                 #[cfg(feature = "optimism")]
                 deposit_nonce: None,
                 #[cfg(feature = "optimism")]

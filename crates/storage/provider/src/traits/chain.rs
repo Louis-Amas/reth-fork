@@ -118,6 +118,8 @@ impl CanonStateNotification {
     /// Return receipt with its block number and transaction hash.
     ///
     /// Last boolean is true if receipt is from reverted block.
+    ///
+    /// Louis: block receipts there
     pub fn block_receipts(&self) -> Vec<(BlockReceipts, bool)> {
         let mut receipts = Vec::new();
 

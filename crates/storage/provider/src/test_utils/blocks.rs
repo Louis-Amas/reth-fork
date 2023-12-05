@@ -4,7 +4,7 @@ use crate::{BundleStateWithReceipts, DatabaseProviderRW};
 use alloy_rlp::Decodable;
 use reth_db::{database::Database, models::StoredBlockBodyIndices, tables};
 use reth_primitives::{
-    b256, hex_literal::hex, Account, Address, BlockNumber, Bytes, Header, Log, Receipt, Receipts,
+    b256, hex_literal::hex, Account, Address, BlockNumber, Bytes, Header, Log, Receipt, State, Receipts,
     SealedBlock, SealedBlockWithSenders, StorageEntry, TxType, Withdrawal, B256, U256,
 };
 use std::collections::HashMap;
@@ -137,6 +137,7 @@ fn block1(number: BlockNumber) -> (SealedBlockWithSenders, BundleStateWithReceip
                 topics: vec![B256::with_last_byte(1), B256::with_last_byte(2)],
                 data: Bytes::default(),
             }],
+            state: State::default(),
             #[cfg(feature = "optimism")]
             deposit_nonce: None,
             #[cfg(feature = "optimism")]
@@ -196,6 +197,7 @@ fn block2(
                 topics: vec![B256::with_last_byte(3), B256::with_last_byte(4)],
                 data: Bytes::default(),
             }],
+            state: State::default(),
             #[cfg(feature = "optimism")]
             deposit_nonce: None,
             #[cfg(feature = "optimism")]

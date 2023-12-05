@@ -8,7 +8,7 @@ use reth_interfaces::executor::{BlockExecutionError, BlockValidationError};
 use reth_primitives::{
     revm::env::{fill_cfg_and_block_env, fill_tx_env},
     Address, Block, BlockNumber, Bloom, ChainSpec, GotExpected, Hardfork, Header, PruneMode,
-    PruneModes, PruneSegmentError, Receipt, ReceiptWithBloom, Receipts, TransactionSigned, B256,
+    PruneModes, PruneSegmentError, Receipt, State as ChangedState, ReceiptWithBloom, Receipts, TransactionSigned, B256,
     MINIMUM_PRUNING_DISTANCE, U256,
 };
 use reth_provider::{
@@ -434,6 +434,7 @@ impl<'a> BlockExecutor for EVMProcessor<'a> {
         self.save_receipts(receipts)
     }
 
+    // LOUIS: execute transactions
     fn execute_transactions(
         &mut self,
         block: &Block,
@@ -465,6 +466,7 @@ impl<'a> BlockExecutor for EVMProcessor<'a> {
             }
             // Execute transaction.
             let ResultAndState { result, state } = self.transact(transaction, sender)?;
+
             trace!(
                 target: "evm",
                 ?transaction, ?result, ?state,
@@ -473,7 +475,7 @@ impl<'a> BlockExecutor for EVMProcessor<'a> {
             self.stats.execution_duration += time.elapsed();
             let time = Instant::now();
 
-            self.db_mut().commit(state);
+            self.db_mut().commit(state.clone()); // TODO(louis): this is unoptimized
 
             self.stats.apply_state_duration += time.elapsed();
 
@@ -489,6 +491,10 @@ impl<'a> BlockExecutor for EVMProcessor<'a> {
                 cumulative_gas_used,
                 // convert to reth log
                 logs: result.into_logs().into_iter().map(into_reth_log).collect(),
+
+                state: ChangedState {
+                    state, 
+                },
                 #[cfg(feature = "optimism")]
                 deposit_nonce: None,
             });
