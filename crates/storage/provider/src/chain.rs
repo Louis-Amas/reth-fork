@@ -6,6 +6,7 @@ use reth_primitives::{
     Address, BlockHash, BlockNumHash, BlockNumber, ForkBlock, Receipt, SealedBlock,
     SealedBlockWithSenders, SealedHeader, TransactionSigned, TransactionSignedEcRecovered, TxHash,
 };
+use revm::db::BundleState;
 use std::{borrow::Cow, collections::BTreeMap, fmt};
 
 /// A chain of blocks and their final state.
@@ -23,6 +24,8 @@ pub struct Chain {
     ///
     /// This state also contains the individual changes that lead to the current state.
     state: BundleStateWithReceipts,
+
+    states: BTreeMap<BlockNumber, BundleState>,
 }
 
 impl Chain {
@@ -31,7 +34,17 @@ impl Chain {
         blocks: impl IntoIterator<Item = SealedBlockWithSenders>,
         state: BundleStateWithReceipts,
     ) -> Self {
-        Self { blocks: BTreeMap::from_iter(blocks.into_iter().map(|b| (b.number, b))), state }
+        let blocks = BTreeMap::from_iter(blocks.into_iter().map(|b| (b.number, b)));
+
+        let mut states = BTreeMap::new();
+        for block in &blocks {
+            states.insert(block.0.clone(), BundleState::default());
+        }
+        Self { 
+            blocks, 
+            state,
+            states,
+        }
     }
 
     /// Create new Chain from a single block and its state.
@@ -52,6 +65,11 @@ impl Chain {
     /// Returns an iterator over all headers in the block with increasing block numbers.
     pub fn headers(&self) -> impl Iterator<Item = SealedHeader> + '_ {
         self.blocks.values().map(|block| block.header.clone())
+    }
+
+    /// Returns an iterator over all headers in the block with increasing block numbers.
+    pub fn states(&self) -> impl Iterator<Item = BundleState> + '_ {
+        self.states.values().map(|state| state.clone())
     }
 
     /// Get post state of this chain
@@ -179,8 +197,10 @@ impl Chain {
     /// Append a single block with state to the chain.
     /// This method assumes that blocks attachment to the chain has already been validated.
     pub fn append_block(&mut self, block: SealedBlockWithSenders, state: BundleStateWithReceipts) {
+        self.states.insert(block.number.clone(), state.bundle.clone());
         self.blocks.insert(block.number, block);
         self.state.extend(state);
+
     }
 
     /// Merge two chains by appending the given chain into the current one.
@@ -247,6 +267,7 @@ impl Chain {
 
         let split_at = block_number + 1;
         let higher_number_blocks = self.blocks.split_off(&split_at);
+        let higher_number_states = self.states.split_off(&split_at);
 
         let state = std::mem::take(&mut self.state);
         let (canonical_state, pending_state) = state.split_at(split_at);
@@ -254,9 +275,14 @@ impl Chain {
         ChainSplit::Split {
             canonical: Chain {
                 state: canonical_state.expect("split in range"),
+                states: self.states,
                 blocks: self.blocks,
             },
-            pending: Chain { state: pending_state, blocks: higher_number_blocks },
+            pending: Chain { 
+                state: pending_state, 
+                blocks: higher_number_blocks,
+                states: higher_number_states,
+            },
         }
     }
 }

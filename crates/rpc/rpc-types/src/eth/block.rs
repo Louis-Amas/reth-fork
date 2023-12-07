@@ -8,12 +8,13 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt::{self, Formatter},
     num::ParseIntError,
     ops::Deref,
     str::FromStr,
 };
+use revm::{db::BundleState, primitives::StorageSlot};
 /// Block Transactions depending on the boolean attribute of `eth_getBlockBy*`,
 /// or if used by `eth_getUncle*`
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -181,6 +182,31 @@ pub struct Header {
     /// Parent beacon block root
     #[serde(rename = "parentBeaconBlockRoot", skip_serializing_if = "Option::is_none")]
     pub parent_beacon_block_root: Option<B256>,
+}
+
+
+/// Minimal Block header representation with storage change
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[serde(rename_all = "camelCase")]
+pub struct MinimalHeaders {
+    /// hash of the block
+    pub hash: B256,
+    /// parent hash of the block
+    pub parent_hash: B256,
+    /// number of the block
+    pub number: u64,
+}
+
+
+/// Minimal Block header representation with storage change
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HeaderWithStorageChange {
+    /// minimal headers vec
+    pub header: MinimalHeaders,
+
+    /// storage change
+    pub storage_change: HashMap<Address, HashMap<U256, StorageSlot>>,
 }
 
 /// A block hash which may have

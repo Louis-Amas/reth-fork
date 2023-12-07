@@ -11,12 +11,13 @@ use reth_rpc_types::{
         Params, PubSubSyncStatus, SubscriptionKind, SubscriptionResult as EthSubscriptionResult,
         SyncStatusMetadata,
     },
-    FilteredParams, Header, Log,
+    FilteredParams, Header, Log, MinimalHeaders, HeaderWithStorageChange,
 };
 use reth_tasks::{TaskSpawner, TokioTaskExecutor};
 use reth_transaction_pool::{NewTransactionEvent, TransactionPool};
+use revm_primitives::StorageSlot;
 use serde::Serialize;
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 use tokio_stream::{
     wrappers::{BroadcastStream, ReceiverStream},
     Stream,
@@ -102,11 +103,21 @@ where
     Network: NetworkInfo + Clone + 'static,
 {
     match kind {
+        // LOUIS
         SubscriptionKind::NewHeads => {
             let stream = pubsub
                 .new_headers_stream()
                 .map(|block| EthSubscriptionResult::Header(Box::new(block.into())));
             pipe_from_stream(accepted_sink, stream).await
+        }
+        SubscriptionKind::NewHeadsAndStorageChange => {
+            let stream = pubsub
+                .new_headers_stream()
+                .map(|block| {
+                    EthSubscriptionResult::Header(Box::new(block.into()))
+                });
+            pipe_from_stream(accepted_sink, stream).await
+
         }
         SubscriptionKind::Logs => {
             // if no params are provided, used default filter params
@@ -297,6 +308,52 @@ where
             futures::stream::iter(
                 headers.into_iter().map(reth_rpc_types_compat::block::from_primitive_with_hash),
             )
+        })
+    }
+
+    /// Returns a stream that yields all new RPC blocks.
+    fn new_headers_with_storage_change_stream(&self) -> impl Stream<Item = HeaderWithStorageChange> {
+        self.chain_events.canonical_state_stream().flat_map(|new_chain| {
+            let mut headers_and_states = new_chain
+                .committed()
+                .map(|chain| {
+                    (
+                        chain.headers()
+                            .map(|header| MinimalHeaders {
+                                hash: header.hash,
+                                parent_hash: header.parent_hash,
+                                number: header.number,
+                            })
+                            .collect::<Vec<_>>(),
+                        chain.states().map(|state| {
+                            let mut contract_map: HashMap<alloy_primitives::Address, HashMap<alloy_primitives::U256, StorageSlot>> = HashMap::new();
+
+                            for (address, bundle) in state.state {
+                                let state_map = contract_map.entry(address).or_insert_with(|| HashMap::new());
+                                for (slot, value) in bundle.storage {
+                                    state_map.insert(slot, value);
+                                }
+                            }
+                            contract_map
+                        }).collect::<Vec<_>>(),
+                    )
+                })
+                .unwrap_or_default();
+
+
+            let mut vec = Vec::new();
+            for (i, header) in headers_and_states.0.into_iter().enumerate() {
+                let storage_change = headers_and_states.1.remove(i);
+                vec.push(HeaderWithStorageChange {
+                    header,
+                    storage_change,
+                });
+            }
+
+            futures::stream::iter(
+                vec.into_iter(),
+            )
+
         })
     }
 

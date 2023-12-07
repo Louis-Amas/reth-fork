@@ -25,7 +25,7 @@ pub use revm::db::states::OriginalValuesKnown;
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct BundleStateWithReceipts {
     /// Bundle state with reverts.
-    bundle: BundleState,
+    pub bundle: BundleState,
     /// The collection of receipts.
     /// Outer vector stores receipts for each block sequentially.
     /// The inner vector stores receipts ordered by transaction number.

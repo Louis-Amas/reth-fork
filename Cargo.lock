@@ -6443,6 +6443,7 @@ dependencies = [
  "proptest",
  "proptest-derive",
  "rand 0.8.5",
+ "revm",
  "secp256k1 0.27.0",
  "serde",
  "serde_json",

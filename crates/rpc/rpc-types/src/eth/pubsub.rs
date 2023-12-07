@@ -72,6 +72,9 @@ pub enum SubscriptionKind {
     /// headers for the new chain. Therefore the subscription can emit multiple headers on the same
     /// height.
     NewHeads,
+
+    /// New Heads and the according storage changes
+    NewHeadsAndStorageChange,
     /// Logs subscription.
     ///
     /// Returns logs that are included in new imported blocks and match the given filter criteria.
