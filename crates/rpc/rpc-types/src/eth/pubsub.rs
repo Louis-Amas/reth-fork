@@ -2,7 +2,7 @@
 
 use crate::{
     eth::{Filter, Transaction},
-    Log, RichHeader,
+    Log, RichHeader, HeaderWithStorageChange,
 };
 use alloy_primitives::B256;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
@@ -13,6 +13,7 @@ use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 pub enum SubscriptionResult {
     /// New block header.
     Header(Box<RichHeader>),
+    HeaderWithStorageChange(HeaderWithStorageChange),
     /// Log
     Log(Box<Log>),
     /// Transaction hash
@@ -52,6 +53,7 @@ impl Serialize for SubscriptionResult {
     {
         match *self {
             SubscriptionResult::Header(ref header) => header.serialize(serializer),
+            SubscriptionResult::HeaderWithStorageChange(ref header) => header.serialize(serializer),
             SubscriptionResult::Log(ref log) => log.serialize(serializer),
             SubscriptionResult::TransactionHash(ref hash) => hash.serialize(serializer),
             SubscriptionResult::FullTransaction(ref tx) => tx.serialize(serializer),

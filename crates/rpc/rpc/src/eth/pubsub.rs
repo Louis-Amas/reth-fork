@@ -112,12 +112,11 @@ where
         }
         SubscriptionKind::NewHeadsAndStorageChange => {
             let stream = pubsub
-                .new_headers_stream()
+                .new_headers_with_storage_change_stream()
                 .map(|block| {
-                    EthSubscriptionResult::Header(Box::new(block.into()))
+                    EthSubscriptionResult::HeaderWithStorageChange(block)
                 });
             pipe_from_stream(accepted_sink, stream).await
-
         }
         SubscriptionKind::Logs => {
             // if no params are provided, used default filter params
