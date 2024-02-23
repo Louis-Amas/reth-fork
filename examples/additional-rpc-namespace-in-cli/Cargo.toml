@@ -9,9 +9,22 @@ license.workspace = true
 reth.workspace = true
 reth-transaction-pool.workspace = true
 
+tokio-stream = "0.1.11"
+# async
+tokio = { workspace = true, features = [
+    "sync",
+    "macros",
+    "time",
+    "rt-multi-thread",
+] }
+
 clap = { workspace = true, features = ["derive"] }
 jsonrpsee = { workspace = true, features = ["server", "macros"] }
 eyre.workspace = true
+futures.workspace = true
+alloy-primitives = { workspace = true }
+serde =  { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tokio.workspace = true
